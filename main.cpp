@@ -11,17 +11,25 @@ const int FRAME_SIZE = 256;
 const int FRAME_AMOUNT= 256;
 const int MEM_SIZE = 65536;
 
+// représente une entrée dans la table des pages.
+// l'index est le numéro de la page,
+// le frame représente le numéro du frame
+// active représente si la page est actuellement active dans la mémoire principale
 struct page_t {
     int index;
     int frame;
     int active;
 };
 
+// Représente une entrée dans la table tlb
+// page est un pointeur vers la page en question
+// timestamp est un indicateur du temps quand l'entrée fut utilisé
 struct tlb_line_t {
     page_t* page;
     clock_t timestamp;
 };
 
+// Représente une sortie système pour l'affichage de la mémoire
 struct lookup_t {
     int virtualAddress{};
     int physicalAddress{};
@@ -48,22 +56,16 @@ int getOffset( int addr) {
     return addr & mask;
 }
 
+// Permet de verifier si une page est présente dans la table des pages.
 lookup_t pageTableLookup(int pageNumber, int offset) {
 
-    for (auto & i : pageTable) {
-        if (i.index == pageNumber) {
+    for (auto & page : pageTable) {
+        if (page.index == pageNumber) { // Si nous avons trouvé la page dans le tableau de pages
 
-            page_t page = i;
-
-            std::stringstream combinePhysicalStream;
-            combinePhysicalStream << page.frame << offset;
-
-            std::stringstream combineLogicalStream;
-            combineLogicalStream << page.index << offset;
-
-            int logicalAddress = (page.index << 8) + offset;
+            int logicalAddress = (page.index << 8) + offset; // Assembler l'adresse logique avec le numéro de page et l'offset.
             int physicalAddress = (page.frame << 8) + offset;
 
+            // Retourner les informations nécessaire a la journalisation des sorties ainsi que de confirmer que la page fut trouvé
             return lookup_t { logicalAddress,physicalAddress,(int)mainMem[(page.frame * FRAME_SIZE) + offset],true};
         }
     }
@@ -71,22 +73,26 @@ lookup_t pageTableLookup(int pageNumber, int offset) {
     return {};
 }
 
+// Permet d'aller cherger, depuis la mémoire secondaire, la page a partir de son numéro.
+// l'index de frame permet de savoir ou stocker cette page dans la mémoire principale
 void fetchFromDisk(int page, int frameIndex) {
 
-    char buf[PAGE_SIZE] = {0};
+    char buf[PAGE_SIZE] = {0}; // Définition d'un buffer permettant de tenir la pagne avant de la stocker
 
-    disk.seekg(page * PAGE_SIZE);
-    disk.read(&buf[0], PAGE_SIZE);
+    disk.seekg(page * PAGE_SIZE); // Se positionner a la position du début de la page
+    disk.read(&buf[0], PAGE_SIZE); // Lire a partir de cette position les prochain 256 bytes et les stocker dans le buffer
 
+    // Copier le buffer dans la mémoire principale. Placer la destination du début de la location du frame désiré pour le stockage.
     memcpy(mainMem + (frameIndex * (FRAME_SIZE)), buf,  FRAME_SIZE);
 }
 
+// Faire la vérification de l'existence d'une addresse dans la tlb.
 lookup_t tlbLookup(int page, int offset) {
 
     for (int i = 0; i < tlbIndex; i++) {
         if (tlb[i].page->index == page) {
 
-            tlb[i].timestamp = clock();
+            tlb[i].timestamp = clock(); // Mettre a jour le timestamp de la tlb (car la valeur vient d'être utilisé une nouvelle fois)
 
             int logicalAddress = (tlb[i].page->index << 8) + offset;
             int physicalAddress = (tlb[i].page->frame << 8) + offset;
@@ -98,6 +104,7 @@ lookup_t tlbLookup(int page, int offset) {
     return {};
 }
 
+// Changer une entrée de page dans tlb
 void loadPageToTbl(int pageIndex) {
 
     int pagePosition = 0;
@@ -108,9 +115,10 @@ void loadPageToTbl(int pageIndex) {
         }
     }
 
-
+    // S'il y a moins de 16 éléments dans la tlb, remplir la tlb.
     if (tlbIndex < 16) {
 
+        // Créer une nouvelle entrée dans la tlb
         tlb[tlbIndex] = tlb_line_t{&pageTable[pagePosition], clock()};
 
         tlbIndex++;
@@ -120,6 +128,8 @@ void loadPageToTbl(int pageIndex) {
 
     int lruLine = 0;
 
+    // Ceci est l'algorithme du Least Recently Used. Va changer l'entrée la plus ancienne au niveau de son utilisation
+    // par la nouvelle page a charger
     for (int i = 0; i < TBL_ENTRY_AMOUNT; i++) {
         if (tlb[i].timestamp < tlb[lruLine].timestamp) {
             lruLine = i;
@@ -152,24 +162,24 @@ int main() {
 
          lookup_t result;
 
-         if (!(result = tlbLookup(virtualAddressPage, addressOffset)).founded){
+         if (!(result = tlbLookup(virtualAddressPage, addressOffset)).founded){ // Si l'adresse ne se trouve pas dans la tlb
              tlbMiss++;
-             if (!(result = pageTableLookup(virtualAddressPage, addressOffset)).founded) {
+             if (!(result = pageTableLookup(virtualAddressPage, addressOffset)).founded) { // Si l'adresse ne se trouve pas dans la table de pages
 
-                 fetchFromDisk(virtualAddressPage, frameIndex);
+                 fetchFromDisk(virtualAddressPage, frameIndex); // Aller chercher la page correspondant a l'Adresse directement dans la mémoire secondaire
 
-                 pageTable[pageTableIndex] = page_t{virtualAddressPage, frameIndex, 1};
-                 loadPageToTbl(virtualAddressPage);
+                 pageTable[pageTableIndex] = page_t{virtualAddressPage, frameIndex, 1}; // Ajouter une nouvelle entrée dans la table des pages pour la nouvelle addresse
+                 loadPageToTbl(virtualAddressPage); // Ajouter une nouvelle entrée dans la tlb pour L'adresse
                  pageTableIndex++;
 
-                 result = pageTableLookup(virtualAddressPage, addressOffset);
+                 result = pageTableLookup(virtualAddressPage, addressOffset); // Aller chercher lookup_t pour l'affichage de la sortie.
 
                  faultAmount++;
                  frameIndex++;
 
              }
              else {
-                 loadPageToTbl(virtualAddressPage);
+                 loadPageToTbl(virtualAddressPage); // Si la page n'est pas dans tlb, mais présente dans la table de pages, la charger dans la tlb
              }
 
          }
