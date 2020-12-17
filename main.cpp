@@ -34,7 +34,7 @@ struct lookup_t {
     int virtualAddress{};
     int physicalAddress{};
     int value{};
-    bool founded = false;
+    bool found = false;
 };
 
 
@@ -149,6 +149,7 @@ int main() {
     int addrAmount = 0;
 
     std::ifstream addressesFile("adresses.txt");
+    std::ofstream outputFile("output.txt");
 
     int frameIndex = 0;
 
@@ -162,9 +163,9 @@ int main() {
 
          lookup_t result;
 
-         if (!(result = tlbLookup(virtualAddressPage, addressOffset)).founded){ // Si l'adresse ne se trouve pas dans la tlb
+         if (!(result = tlbLookup(virtualAddressPage, addressOffset)).found){ // Si l'adresse ne se trouve pas dans la tlb
              tlbMiss++;
-             if (!(result = pageTableLookup(virtualAddressPage, addressOffset)).founded) { // Si l'adresse ne se trouve pas dans la table de pages
+             if (!(result = pageTableLookup(virtualAddressPage, addressOffset)).found) { // Si l'adresse ne se trouve pas dans la table de pages
 
                  fetchFromDisk(virtualAddressPage, frameIndex); // Aller chercher la page correspondant a l'Adresse directement dans la mémoire secondaire
 
@@ -187,14 +188,16 @@ int main() {
              tlbSuccess++;
          }
 
-         std::cout << "Virtual address: " << result.virtualAddress << " Physical address: " << result.physicalAddress << " Value: " << result.value << std::endl;
+        outputFile << "Virtual address: " << result.virtualAddress << " Physical address: " << result.physicalAddress << " Value: " << result.value << std::endl;
     }
 
-    std::cout << "Fault Amount : " << faultAmount << ", Addr Amount: " << addrAmount << std::endl;
+    outputFile << "Fault Amount : " << faultAmount << ", Addr Amount: " << addrAmount << std::endl;
 
-    std::cout << "Fault ratio: " << faultAmount / (float)addrAmount << std::endl;
+    outputFile << "Fault ratio: " << faultAmount / (float)addrAmount << std::endl;
 
-    std::cout << "TLB misses: " << tlbMiss << ", TLB Successes: " << tlbSuccess << std::endl;
+    outputFile << "TLB misses: " << tlbMiss << ", TLB Successes: " << tlbSuccess << ", Rate: " << tlbSuccess / (float) tlbMiss << std::endl;
+
+    outputFile.close();
 
     return 0;
 }
