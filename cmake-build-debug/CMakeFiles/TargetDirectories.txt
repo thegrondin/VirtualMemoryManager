@@ -1,0 +1,3 @@
+/home/etudiant/CLionProjects/VirtualMemory/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/etudiant/CLionProjects/VirtualMemory/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/etudiant/CLionProjects/VirtualMemory/cmake-build-debug/CMakeFiles/VirtualMemory.dir

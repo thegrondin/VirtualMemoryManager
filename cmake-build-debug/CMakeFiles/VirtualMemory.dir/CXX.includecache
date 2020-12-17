@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/etudiant/CLionProjects/VirtualMemory/main.cpp
+iostream
+-
+fstream
+-
+vector
+-
+bitset
+-
+cstring
+-
+sstream
+-
+thread
+-
+

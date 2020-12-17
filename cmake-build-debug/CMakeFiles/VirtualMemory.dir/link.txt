@@ -1,0 +1,1 @@
+/usr/bin/c++  -g   CMakeFiles/VirtualMemory.dir/main.cpp.o  -o VirtualMemory 
