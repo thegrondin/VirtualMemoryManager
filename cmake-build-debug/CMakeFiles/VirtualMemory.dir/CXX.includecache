@@ -11,14 +11,10 @@ iostream
 -
 fstream
 -
-vector
--
 bitset
 -
 cstring
 -
 sstream
--
-thread
 -
 
